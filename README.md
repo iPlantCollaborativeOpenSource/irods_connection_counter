@@ -9,15 +9,19 @@ parser.py <.log file or directory containing .log files>
 
 -m for connections by minute
 
+By default, the log will output connections by second
+
 -i "name1,name2,name3" for users you want to ignore
 
-By default, the log will output connections by second and will count all users in the file
+-y <year> for the year the log was generated. Defaults to current year
+
 
 #Output
 The script will create an output folder for each individual .log file titled <name of log>_parser_output. 
 Each folder will contain a file for every user found in the log as well as a "parsertotal.out" file containing the aggregate of all user connections.
 
 The format for Jun 16 08:10:17 would be
+
 20150616 08:10:17
 
 20150616 08:10
