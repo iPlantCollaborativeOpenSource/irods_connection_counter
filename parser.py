@@ -3,7 +3,7 @@
 import re
 import os
 import glob
-import datetime
+from datetime import datetime, date, timedelta, time
 import argparse
 
 months = {
@@ -31,10 +31,19 @@ def parse_file(filename, output_dir, options):
     if options.year:
         year = str(options.year)
     else:
-        year = str(datetime.date.today().year)
+        year = str(date.today().year) + " "
+
+    zeroes = options.zeroes
 
     user_lists = {}
     total_list = {}
+
+    if options.minute_format:
+        time_format = 60
+    elif options.hour_format:
+        time_format = 60 * 60
+    else:
+        time_format = 1
 
     f = open(filename, 'r')
 
@@ -43,47 +52,67 @@ def parse_file(filename, output_dir, options):
 
         try:
             started_line = re.search('started', line_text)
-            user = re.search('puser=(\w+)', line_text).group(1)
-            date = re.search('[A-Z][a-z][a-z] [0-9][0-9]*', line_text).group(0)
-            found_time = re.search('[0-5][0-9]:[0-5][0-9]:[0-5][0-9]', line_text).group(0)
+            user = re.search('puser=([a-zA-Z0-9_-]+)', line_text).group(1)
+            date_time = re.search('[A-Z][a-z][a-z] [0-3][0-9] [0-5][0-9]:[0-5][0-9]:[0-5][0-9]', line_text).group(0)
         except:
             continue
 
         if user in ignored_names:
             continue
 
+        date_with_year = str(year) + date_time
+
+        date_object = datetime.strptime(date_with_year, "%Y %b %d %H:%M:%S")
+
         if options.minute_format:
-            found_time = found_time[:-3]
+            date_object = date_object.replace(second=0, microsecond=0)
         elif options.hour_format:
-            found_time = found_time[:-6]
+            date_object = date_object.replace(minute=0, second=0, microsecond=0)
 
-        time_key = build_date(date, year) + found_time
-        build_user_list(user, time_key, user_lists)
-        build_total_list(time_key, total_list)
+        build_user_list(user, date_object, user_lists)
+        build_total_list(date_object, total_list)
 
-    build_user_files(user_lists, output_dir)
-    build_total_file(total_list, output_dir)
-
-
-def build_date(date, year):
-    month = date[:3]
-    day = date[4:]
-    return year+months.get(month)+day + ", "
+    build_user_files(user_lists, output_dir, zeroes, time_format)
+    build_total_file(total_list, output_dir, zeroes, time_format)
 
 
-def build_user_files(user_lists, directory='./'):
+def build_user_files(user_lists, directory='./', zeroes=None, time_format=1):
     if not os.path.exists(directory):
         os.makedirs(directory)
+
     for user in user_lists:
+        if zeroes:
+            user_lists[user] = add_zeroes(user_lists[user], time_format)
+
+        user_lists[user] = formatted(user_lists[user], time_format)
+
         f = open(str(directory) + '/' + str(user) + '.out', 'w+')
         for key in sorted(user_lists[user].keys()):
             f.write(str(key) + ", " + str(user_lists[user][key]) + "\n")
         f.close()
 
 
-def build_total_file(total_list, directory='./'):
+def formatted(list_in, format):
+    for key in list_in.keys():
+        if format == 60:
+            new_key = datetime.strftime(key, "%Y%m%d, %H:%M")
+        elif format == 3600:
+            print "HI"
+            new_key = datetime.strftime(key, "%Y%m%d, %H")
+        else:
+            new_key = datetime.strftime(key, "%Y%m%d, %H:%M:%S")
+        list_in[new_key] = list_in.pop(key)
+    return list_in
+
+
+def build_total_file(total_list, directory='./', zeroes=None, time_format=1):
     if not os.path.exists(directory):
         os.makedirs(directory)
+    if zeroes:
+        total_list = add_zeroes(total_list, time_format)
+
+    total_list = formatted(total_list, time_format)
+
     f = open(str(directory) + '/parsertotal.out', 'w+')
     for item in sorted(total_list):
         f.write(str(item) + ", " + str(total_list[item]) + "\n")
@@ -106,6 +135,21 @@ def build_total_list(time_key, total_list):
         total_list[time_key] += 1
 
 
+def add_zeroes(time_list, time_format=1):
+    sorted_keys = sorted(time_list.keys())
+    first_element = sorted_keys[0]
+    last_element = sorted_keys[-1]
+    zero_list = {}
+
+    while first_element < last_element:
+        if first_element not in time_list:
+            zero_list[first_element] = 0
+        first_element = first_element + timedelta(0, time_format)
+    total = time_list.copy()
+    total.update(zero_list)
+    return total
+
+
 def main():
     parser = argparse.ArgumentParser(description="Count iRODS user connections")
     parser.add_argument(metavar='FILE_OR_DIR', dest='file_or_dir', help=".log file or folder containing .log files to parse.")
@@ -114,6 +158,7 @@ def main():
     parser.add_argument('-y', '--year', dest='year', help="Year of log (defaults to current year")
     parser.add_argument('-i', '--ignore', dest='ignore', help="Users to ignore")
     parser.add_argument('-o', '--output', dest="output", help="Directory for output files (defaults to CWD)")
+    parser.add_argument('-z', '--zeroes', action='store_const', dest='zeroes', const='zeroes', help="Output zeroes for non existent time")
 
     options = parser.parse_args()
 
