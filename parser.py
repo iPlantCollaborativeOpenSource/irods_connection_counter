@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
-from optparse import OptionParser
 import sys
+import pprint
 import re
 import os
 import glob
 import datetime
+import argparse
 
 months = {
     "Jan": "01",
@@ -24,9 +25,6 @@ months = {
 
 
 def parse_file(filename, output_dir, options):
-    if not options:
-        options = {}
-
     if options.ignore:
         ignored_names = (options.ignore.split(','))
     else:
@@ -56,9 +54,9 @@ def parse_file(filename, output_dir, options):
         if user in ignored_names:
             continue
 
-        if options.minutes:
+        if options.minute_format:
             found_time = found_time[:-3]
-        elif options.hours:
+        elif options.hour_format:
             found_time = found_time[:-6]
 
         time_key = build_date(date, year) + found_time
@@ -111,18 +109,25 @@ def build_total_list(time_key, total_list):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print "Missing log file or log folder to parse. Exiting."
-        exit()
+    # if len(sys.argv) < 2:
+    #     print "Missing log file or log folder to parse. Exiting."
+    #     exit()
 
-    parser = OptionParser()
-    parser.add_option("-i", "--ignore", dest="ignore", help="user(s) to ignore. In quotations with NO SPACES", metavar="IGNORE")
-    parser.add_option("-m", "--minutes", action="store_true", dest="minutes", help="data by minutes (default to seconds)", metavar="MINUTES")
-    parser.add_option("-l", "--hours", dest="hours", action="store_true", help="data by hours (default to seconds)", metavar="HOURS")
-    parser.add_option("-y", "--year", dest="year", help="year of log (defaults to current year", metavar="YEAR")
+    # parser = OptionParser()
+    # parser.add_option("-i", "--ignore", dest="ignore", help="user(s) to ignore. In quotations with NO SPACES", metavar="IGNORE")
+    # parser.add_option("-m", "--minutes", action="store_true", dest="minutes", help="data by minutes (default to seconds)", metavar="MINUTES")
+    # parser.add_option("-l", "--hours", dest="hours", action="store_true", help="data by hours (default to seconds)", metavar="HOURS")
+    # parser.add_option("-y", "--year", dest="year", help="year of log (defaults to current year", metavar="YEAR")
 
-    file_or_dir = sys.argv[1]
-    (options, args) = parser.parse_args()
+    parser = argparse.ArgumentParser(description="Count iRODS user connections")
+    parser.add_argument(metavar='FILE_OR_DIR', dest='file_or_dir', help=".log file or folder containing .log files to parse.")
+    parser.add_argument('--hours', dest='hour_format', action='store_const', const="hour", help="Output connections by hour (defaults to seconds)")
+    parser.add_argument('-m', '--minutes', dest='minute_format', action='store_const', const="minute", help="Output connections by minute (defaults to seconds)")
+    parser.add_argument('-y', '--year', dest='year', help="Year of log (defaults to current year")
+    parser.add_argument('-i', '--ignore', dest='ignore', help="Users to ignore")
+
+    options = parser.parse_args()
+    file_or_dir = options.file_or_dir
 
     if os.path.isdir(file_or_dir):
         for file_name in glob.glob(file_or_dir+'/*.log'):
