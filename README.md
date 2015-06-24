@@ -8,7 +8,9 @@ parser.py <.log file or directory containing .log files>
 -l for connections by hour
 -m for connections by minute
 
-By default, the log will output connections by second
+-i "name1,name2,name3" for users you want to ignore
+
+By default, the log will output connections by second and will count all users in the file
 
 #Output
 The script will create an output folder for each individual .log file titled <name of log>_parser_output. 
