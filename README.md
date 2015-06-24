@@ -15,6 +15,8 @@ By default, the log will output connections by second
 
 -y <year> for the year the log was generated. Defaults to current year
 
+-z to add zeroes to times where no connections were opened
+
 
 #Output
 The script will create an output folder for each individual .log file titled <name of log>_parser_output. 
@@ -28,4 +30,4 @@ The format for Jun 16 08:10:17 would be
 
 20150616 08
 
-Depending on the -l or -m options described above.
+Depending on the time formatting options described above.
