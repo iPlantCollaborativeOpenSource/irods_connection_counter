@@ -6,6 +6,7 @@ parser.py <.log file or directory containing .log files>
 
 #Options
 -l for connections by hour
+
 -m for connections by minute
 
 -i "name1,name2,name3" for users you want to ignore
@@ -18,6 +19,9 @@ Each folder will contain a file for every user found in the log as well as a "pa
 
 The format for Jun 16 08:10:17 would be
 20150616 08:10:17
+
 20150616 08:10
+
 20150616 08
+
 Depending on the -l or -m options described above.
