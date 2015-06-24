@@ -2,7 +2,7 @@
 This project counts individual user connections from irods and outputs individual user file logs as well as a total connection count for each .log file.
 
 #Guide
-pyton parser.py <.log file or directory containing .log files>
+parser.py <.log file or directory containing .log files>
 
 #Options
 -l for connections by hour
