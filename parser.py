@@ -3,7 +3,7 @@
 import re
 import os
 import glob
-from datetime import datetime, date, timedelta, time
+from datetime import datetime, date, timedelta
 import argparse
 
 months = {
@@ -20,6 +20,8 @@ months = {
     "Nov": "11",
     "Dec": "12"
 }
+
+total_aggregate_list = {}
 
 
 def parse_file(filename, output_dir, options):
@@ -97,7 +99,6 @@ def formatted(list_in, format):
         if format == 60:
             new_key = datetime.strftime(key, "%Y%m%d, %H:%M")
         elif format == 3600:
-            print "HI"
             new_key = datetime.strftime(key, "%Y%m%d, %H")
         else:
             new_key = datetime.strftime(key, "%Y%m%d, %H:%M:%S")
@@ -113,9 +114,21 @@ def build_total_file(total_list, directory='./', zeroes=None, time_format=1):
 
     total_list = formatted(total_list, time_format)
 
+    build_total_aggregate_list(total_list)
+
     f = open(str(directory) + '/parsertotal.out', 'w+')
     for item in sorted(total_list):
         f.write(str(item) + ", " + str(total_list[item]) + "\n")
+    f.close()
+
+
+def build_total_aggregate_file(directory='./'):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    f = open(str(directory) + '/log_aggregate_total.out', 'w+')
+    for item in sorted(total_aggregate_list):
+        f.write(str(item) + ", " + str(total_aggregate_list[item]) + "\n")
     f.close()
 
 
@@ -133,6 +146,14 @@ def build_total_list(time_key, total_list):
         total_list[time_key] = 1
     else:
         total_list[time_key] += 1
+
+
+def build_total_aggregate_list(list_in):
+    global total_aggregate_list
+    if total_aggregate_list is None:
+        total_aggregate_list = list_in.copy
+    else:
+        total_aggregate_list.update(list_in)
 
 
 def add_zeroes(time_list, time_format=1):
@@ -170,6 +191,8 @@ def main():
             parse_file(file_name, output_folder + str(file_name) + '_parser_output/', options)
     else:
         parse_file(file_or_dir, output_folder + str(file_or_dir) + '_parser_output/', options)
+
+    build_total_aggregate_file(output_folder)
 
 
 if __name__ == "__main__":
