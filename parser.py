@@ -113,15 +113,18 @@ def main():
     parser.add_argument('-m', '--minutes', dest='minute_format', action='store_const', const="minute", help="Output connections by minute (defaults to seconds)")
     parser.add_argument('-y', '--year', dest='year', help="Year of log (defaults to current year")
     parser.add_argument('-i', '--ignore', dest='ignore', help="Users to ignore")
+    parser.add_argument('-o', '--output', dest="output", help="Directory for output files (defaults to CWD)")
 
     options = parser.parse_args()
+
     file_or_dir = options.file_or_dir
+    output_folder = options.output or './'
 
     if os.path.isdir(file_or_dir):
         for file_name in glob.glob(file_or_dir+'/*.log'):
-            parse_file(file_name, str(file_name) + '_parser_output', options)
+            parse_file(file_name, output_folder + str(file_name) + '_parser_output/', options)
     else:
-        parse_file(file_or_dir, './' + str(file_or_dir) + '_parser_output/', options)
+        parse_file(file_or_dir, output_folder + str(file_or_dir) + '_parser_output/', options)
 
 
 if __name__ == "__main__":
