@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-import sys
-import pprint
 import re
 import os
 import glob
@@ -109,16 +107,6 @@ def build_total_list(time_key, total_list):
 
 
 def main():
-    # if len(sys.argv) < 2:
-    #     print "Missing log file or log folder to parse. Exiting."
-    #     exit()
-
-    # parser = OptionParser()
-    # parser.add_option("-i", "--ignore", dest="ignore", help="user(s) to ignore. In quotations with NO SPACES", metavar="IGNORE")
-    # parser.add_option("-m", "--minutes", action="store_true", dest="minutes", help="data by minutes (default to seconds)", metavar="MINUTES")
-    # parser.add_option("-l", "--hours", dest="hours", action="store_true", help="data by hours (default to seconds)", metavar="HOURS")
-    # parser.add_option("-y", "--year", dest="year", help="year of log (defaults to current year", metavar="YEAR")
-
     parser = argparse.ArgumentParser(description="Count iRODS user connections")
     parser.add_argument(metavar='FILE_OR_DIR', dest='file_or_dir', help=".log file or folder containing .log files to parse.")
     parser.add_argument('--hours', dest='hour_format', action='store_const', const="hour", help="Output connections by hour (defaults to seconds)")
