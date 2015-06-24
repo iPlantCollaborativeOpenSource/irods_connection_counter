@@ -5,6 +5,7 @@ import sys
 import re
 import os
 import glob
+import datetime
 
 months = {
     "Jan": "01",
@@ -31,6 +32,11 @@ def parse_file(filename, output_dir, options):
     else:
         ignored_names = []
 
+    if options.year:
+        year = str(options.year)
+    else:
+        year = str(datetime.date.today().year)
+
     user_lists = {}
     total_list = {}
 
@@ -55,7 +61,7 @@ def parse_file(filename, output_dir, options):
         elif options.hours:
             found_time = found_time[:-6]
 
-        time_key = build_date(date) + found_time
+        time_key = build_date(date, year) + found_time
         build_user_list(user, time_key, user_lists)
         build_total_list(time_key, total_list)
 
@@ -63,10 +69,10 @@ def parse_file(filename, output_dir, options):
     build_total_file(total_list, output_dir)
 
 
-def build_date(date):
+def build_date(date, year):
     month = date[:3]
     day = date[4:]
-    return "2015"+months.get(month)+day + ", "
+    return year+months.get(month)+day + ", "
 
 
 def build_user_files(user_lists, directory='./'):
@@ -105,19 +111,18 @@ def build_total_list(time_key, total_list):
 
 
 def main():
+    if len(sys.argv) < 2:
+        print "Missing log file or log folder to parse. Exiting."
+        exit()
 
     parser = OptionParser()
     parser.add_option("-i", "--ignore", dest="ignore", help="user(s) to ignore. In quotations with NO SPACES", metavar="IGNORE")
     parser.add_option("-m", "--minutes", action="store_true", dest="minutes", help="data by minutes (default to seconds)", metavar="MINUTES")
     parser.add_option("-l", "--hours", dest="hours", action="store_true", help="data by hours (default to seconds)", metavar="HOURS")
-
-    (options, args) = parser.parse_args()
-
-    if len(sys.argv) < 2:
-        print "Missing log file or log folder to parse. Exiting."
-        exit()
+    parser.add_option("-y", "--year", dest="year", help="year of log (defaults to current year", metavar="YEAR")
 
     file_or_dir = sys.argv[1]
+    (options, args) = parser.parse_args()
 
     if os.path.isdir(file_or_dir):
         for file_name in glob.glob(file_or_dir+'/*.log'):
