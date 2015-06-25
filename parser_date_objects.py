@@ -6,6 +6,7 @@ import glob
 from datetime import datetime, date, timedelta
 import argparse
 
+
 months = {
     "Jan": "01",
     "Feb": "02",
@@ -75,7 +76,7 @@ def parse_file(filename, output_dir, options):
         build_total_list(date_object, total_list)
 
     build_user_files(user_lists, output_dir, zeroes, time_format)
-    build_total_file(total_list, output_dir, zeroes, time_format)
+    build_total_file(total_list, output_dir, zeroes, time_format, options.total)
 
 
 def build_user_files(user_lists, directory='./', zeroes=None, time_format=1):
@@ -106,7 +107,7 @@ def formatted(list_in, format):
     return list_in
 
 
-def build_total_file(total_list, directory='./', zeroes=None, time_format=1):
+def build_total_file(total_list, directory='./', zeroes=None, time_format=1, total=None):
     if not os.path.exists(directory):
         os.makedirs(directory)
     if zeroes:
@@ -114,7 +115,8 @@ def build_total_file(total_list, directory='./', zeroes=None, time_format=1):
 
     total_list = formatted(total_list, time_format)
 
-    build_total_aggregate_list(total_list)
+    if total:
+        build_total_aggregate_list(total_list)
 
     f = open(str(directory) + '/parsertotal.out', 'w+')
     for item in sorted(total_list):
@@ -156,6 +158,10 @@ def build_total_aggregate_list(list_in):
         total_aggregate_list.update(list_in)
 
 
+def date_increment(date):
+    print date
+
+
 def add_zeroes(time_list, time_format=1):
     sorted_keys = sorted(time_list.keys())
     first_element = sorted_keys[0]
@@ -180,6 +186,7 @@ def main():
     parser.add_argument('-i', '--ignore', dest='ignore', help="Users to ignore")
     parser.add_argument('-o', '--output', dest="output", help="Directory for output files (defaults to CWD)")
     parser.add_argument('-z', '--zeroes', action='store_const', dest='zeroes', const='zeroes', help="Output zeroes for non existent time")
+    parser.add_argument('-t', '--total', action='store_const', dest='total', const='total', help="Generate a total aggregate of all log files")
 
     options = parser.parse_args()
 
@@ -192,7 +199,8 @@ def main():
     else:
         parse_file(file_or_dir, output_folder + str(file_or_dir) + '_parser_output/', options)
 
-    build_total_aggregate_file(output_folder)
+    if options.total:
+        build_total_aggregate_file(output_folder)
 
 
 if __name__ == "__main__":
