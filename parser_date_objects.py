@@ -36,17 +36,8 @@ def parse_file(filename, output_dir, options):
     else:
         year = str(date.today().year) + " "
 
-    zeroes = options.zeroes
-
     user_lists = {}
     total_list = {}
-
-    if options.minute_format:
-        time_format = 60
-    elif options.hour_format:
-        time_format = 60 * 60
-    else:
-        time_format = 1
 
     f = open(filename, 'r')
 
@@ -75,16 +66,22 @@ def parse_file(filename, output_dir, options):
         build_user_list(user, date_object, user_lists)
         build_total_list(date_object, total_list)
 
-    build_user_files(user_lists, output_dir, zeroes, time_format)
-    build_total_file(total_list, output_dir, zeroes, time_format, options.total)
+    build_user_files(user_lists, output_dir, options)
+    build_total_file(total_list, output_dir, options)
 
 
-def build_user_files(user_lists, directory='./', zeroes=None, time_format=1):
+def build_user_files(user_lists, directory='./', options=None):
+    if options.minute_format:
+        time_format = 60
+    elif options.hour_format:
+        time_format = 60 * 60
+    else:
+        time_format = 1
     if not os.path.exists(directory):
         os.makedirs(directory)
 
     for user in user_lists:
-        if zeroes:
+        if options.zeroes:
             user_lists[user] = add_zeroes(user_lists[user], time_format)
 
         user_lists[user] = formatted(user_lists[user], time_format)
@@ -107,15 +104,22 @@ def formatted(list_in, format):
     return list_in
 
 
-def build_total_file(total_list, directory='./', zeroes=None, time_format=1, total=None):
+def build_total_file(total_list, directory='./', options=None):
+    if options.minute_format:
+        time_format = 60
+    elif options.hour_format:
+        time_format = 60 * 60
+    else:
+        time_format = 1
+
     if not os.path.exists(directory):
         os.makedirs(directory)
-    if zeroes:
+    if options.zeroes:
         total_list = add_zeroes(total_list, time_format)
 
     total_list = formatted(total_list, time_format)
 
-    if total:
+    if options.total:
         build_total_aggregate_list(total_list)
 
     f = open(str(directory) + '/parsertotal.out', 'w+')
@@ -156,10 +160,6 @@ def build_total_aggregate_list(list_in):
         total_aggregate_list = list_in.copy
     else:
         total_aggregate_list.update(list_in)
-
-
-def date_increment(date):
-    print date
 
 
 def add_zeroes(time_list, time_format=1):
