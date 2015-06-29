@@ -191,7 +191,7 @@ def main():
     options = parser.parse_args()
 
     file_or_dir = options.file_or_dir
-    output_folder = options.output or './'
+    output_folder = options.output+'/' or './'
 
     if os.path.isdir(file_or_dir):
         for file_name in glob.glob(file_or_dir+'/*.log'):
