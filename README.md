@@ -17,6 +17,8 @@ By default, the log will output connections by second
 
 -z to add zeroes to times where no connections were opened
 
+-t to generate a total aggregate file of all logs parsed
+
 
 #Output
 The script will create an output folder for each individual .log file titled <name of log>_parser_output. 
