@@ -19,6 +19,11 @@ By default, the log will output connections by second
 
 -t to generate a total aggregate file of all logs parsed
 
+#Example
+python parser.py . -o all -z -t --hours -i "joseph"
+
+This will run the log parser on the current working directory. All .log files found have output generated in the "all" directory. We want zeroes to be placed at times where no connections occurred, we want the resolution to be in hours, and we want to ignore user "joseph."
+
 
 #Output
 The script will create an output folder for each individual .log file titled <name of log>_parser_output. 
