@@ -27,14 +27,14 @@ This will run the log parser on the current working directory. All .log files fo
 
 #Output
 The script will create an output folder for each individual .log file titled <name of log>_parser_output. 
-Each folder will contain a file for every user found in the log as well as a "parsertotal.out" file containing the aggregate of all user connections.
+Each folder will contain a file for every user found in the log as well as a "parser_total.out" file containing the aggregate of all user connections.
 
 The format for Jun 16 08:10:17 would be
 
-20150616 08:10:17
+20150616, 08:10:17
 
-20150616 08:10
+20150616, 08:10
 
-20150616 08
+20150616, 08
 
 Depending on the time formatting options described above.
