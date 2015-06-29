@@ -185,7 +185,7 @@ def main():
     parser.add_argument('-y', '--year', dest='year', help="Year of log (defaults to current year")
     parser.add_argument('-i', '--ignore', dest='ignore', help="Users to ignore")
     parser.add_argument('-o', '--output', dest="output", help="Directory for output files (defaults to CWD)")
-    parser.add_argument('-z', '--zeroes', action='store_const', dest='zeroes', const='zeroes', help="Output zeroes for non existent time")
+    parser.add_argument('-z', '--zeroes', action='store_const', dest='zeroes', const='zeroes', help="Output zeroes for time with no connections")
     parser.add_argument('-t', '--total', action='store_const', dest='total', const='total', help="Generate a total aggregate of all log files")
 
     options = parser.parse_args()
