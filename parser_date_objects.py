@@ -6,6 +6,7 @@ import glob
 from datetime import datetime, date, timedelta
 import argparse
 
+
 months = {
     "Jan": "01",
     "Feb": "02",
@@ -35,17 +36,8 @@ def parse_file(filename, output_dir, options):
     else:
         year = str(date.today().year) + " "
 
-    zeroes = options.zeroes
-
     user_lists = {}
     total_list = {}
-
-    if options.minute_format:
-        time_format = 60
-    elif options.hour_format:
-        time_format = 60 * 60
-    else:
-        time_format = 1
 
     f = open(filename, 'r')
 
@@ -74,16 +66,22 @@ def parse_file(filename, output_dir, options):
         build_user_list(user, date_object, user_lists)
         build_total_list(date_object, total_list)
 
-    build_user_files(user_lists, output_dir, zeroes, time_format)
-    build_total_file(total_list, output_dir, zeroes, time_format)
+    build_user_files(user_lists, output_dir, options)
+    build_total_file(total_list, output_dir, options)
 
 
-def build_user_files(user_lists, directory='./', zeroes=None, time_format=1):
+def build_user_files(user_lists, directory='./', options=None):
+    if options.minute_format:
+        time_format = 60
+    elif options.hour_format:
+        time_format = 60 * 60
+    else:
+        time_format = 1
     if not os.path.exists(directory):
         os.makedirs(directory)
 
     for user in user_lists:
-        if zeroes:
+        if options.zeroes:
             user_lists[user] = add_zeroes(user_lists[user], time_format)
 
         user_lists[user] = formatted(user_lists[user], time_format)
@@ -106,15 +104,23 @@ def formatted(list_in, format):
     return list_in
 
 
-def build_total_file(total_list, directory='./', zeroes=None, time_format=1):
+def build_total_file(total_list, directory='./', options=None):
+    if options.minute_format:
+        time_format = 60
+    elif options.hour_format:
+        time_format = 60 * 60
+    else:
+        time_format = 1
+
     if not os.path.exists(directory):
         os.makedirs(directory)
-    if zeroes:
+    if options.zeroes:
         total_list = add_zeroes(total_list, time_format)
 
     total_list = formatted(total_list, time_format)
 
-    build_total_aggregate_list(total_list)
+    if options.total:
+        build_total_aggregate_list(total_list)
 
     f = open(str(directory) + '/parsertotal.out', 'w+')
     for item in sorted(total_list):
@@ -180,11 +186,12 @@ def main():
     parser.add_argument('-i', '--ignore', dest='ignore', help="Users to ignore")
     parser.add_argument('-o', '--output', dest="output", help="Directory for output files (defaults to CWD)")
     parser.add_argument('-z', '--zeroes', action='store_const', dest='zeroes', const='zeroes', help="Output zeroes for non existent time")
+    parser.add_argument('-t', '--total', action='store_const', dest='total', const='total', help="Generate a total aggregate of all log files")
 
     options = parser.parse_args()
 
     file_or_dir = options.file_or_dir
-    output_folder = options.output or './'
+    output_folder = options.output+'/' or './'
 
     if os.path.isdir(file_or_dir):
         for file_name in glob.glob(file_or_dir+'/*.log'):
@@ -192,7 +199,8 @@ def main():
     else:
         parse_file(file_or_dir, output_folder + str(file_or_dir) + '_parser_output/', options)
 
-    build_total_aggregate_file(output_folder)
+    if options.total:
+        build_total_aggregate_file(output_folder)
 
 
 if __name__ == "__main__":
