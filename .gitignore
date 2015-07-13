@@ -3,3 +3,7 @@
 *_output
 .backup.py
 *.out
+
+*.parserout
+
+*.pyc
