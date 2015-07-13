@@ -47,8 +47,8 @@ def parse_file(filename, output_dir, options):
         try:
             started_line = re.search('started', line_text)
             user = re.search('puser=([a-zA-Z0-9_-]+)', line_text).group(1)
-            date_time = re.search('[A-Z][a-z][a-z] [0-3][0-9] [0-5][0-9]:[0-5][0-9]:[0-5][0-9]', line_text).group(0)
-        except:
+            date_time = re.search('[A-Z][a-z][a-z] +[0-3]*[0-9] [0-5][0-9]:[0-5][0-9]:[0-5][0-9]', line_text).group(0)
+        except Exception as e:
             continue
 
         if user in ignored_names:
