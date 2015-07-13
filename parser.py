@@ -5,6 +5,7 @@ import os
 import glob
 from datetime import datetime, date, timedelta
 import argparse
+from multiprocessing import Pool
 
 
 months = {
@@ -22,8 +23,6 @@ months = {
     "Dec": "12"
 }
 
-total_aggregate_list = {}
-
 
 def parse_file(filename, output_dir, options):
     if options.ignore:
@@ -37,7 +36,6 @@ def parse_file(filename, output_dir, options):
         year = str(date.today().year) + " "
 
     user_lists = {}
-    total_list = {}
 
     f = open(filename, 'r')
 
@@ -63,11 +61,26 @@ def parse_file(filename, output_dir, options):
         elif options.hour_format:
             date_object = date_object.replace(minute=0, second=0, microsecond=0)
 
-        build_user_list(user, date_object, user_lists)
-        build_total_list(date_object, total_list)
+        build_user_list(user, date_object, user_lists, output_dir)
 
     build_user_files(user_lists, output_dir, options)
-    build_total_file(total_list, output_dir, options)
+    build_total_file(user_lists, output_dir, options)
+
+
+def parse_output_file(filename, aggregate_list):
+    f = open(filename, 'r')
+
+    for line in f:
+        line_text = str(line)
+        date_value, time_value, count = line_text.split(',')
+        key = date_value + time_value
+        count = count.lstrip()
+        if key not in aggregate_list:
+            aggregate_list[key] = count
+        else:
+            aggregate_list[key] += count
+
+    f.close()
 
 
 def build_user_files(user_lists, directory='./', options=None):
@@ -79,24 +92,37 @@ def build_user_files(user_lists, directory='./', options=None):
         time_format = 1
     if not os.path.exists(directory):
         os.makedirs(directory)
+ 
+    for user in user_lists: 
+        current_user_list = {}
+        f = open(directory + user + '.parserout.tmp', 'r')
+        for date_and_time in f:
+            date_and_time = date_and_time.rstrip()
+            date_and_time = datetime.strptime(date_and_time, "%Y-%m-%d %H:%M:%S")
+            if date_and_time not in current_user_list:
+                current_user_list[date_and_time] = 1
+            else:
+                current_user_list[date_and_time] += 1
+        f.close()
 
-    for user in user_lists:
+        os.remove(directory + user + '.parserout.tmp')
+     
         if options.zeroes:
-            user_lists[user] = add_zeroes(user_lists[user], time_format)
+            current_user_list = add_zeroes(current_user_list, time_format)
+    
+        current_user_list = formatted(current_user_list, time_format)
 
-        user_lists[user] = formatted(user_lists[user], time_format)
-
-        f = open(str(directory) + '/' + str(user) + '.out', 'w+')
-        for key in sorted(user_lists[user].keys()):
-            f.write(str(key) + ", " + str(user_lists[user][key]) + "\n")
+        f = open(directory + user + '.parserout', 'a+')
+        for item in sorted(current_user_list):
+            f.write(str(item.rstrip()) + ', ' + str(current_user_list[item]) + '\n')
         f.close()
 
 
-def formatted(list_in, format):
+def formatted(list_in, format_type):
     for key in list_in.keys():
-        if format == 60:
+        if format_type == 60:
             new_key = datetime.strftime(key, "%Y%m%d, %H:%M")
-        elif format == 3600:
+        elif format_type == 3600:
             new_key = datetime.strftime(key, "%Y%m%d, %H")
         else:
             new_key = datetime.strftime(key, "%Y%m%d, %H:%M:%S")
@@ -104,77 +130,103 @@ def formatted(list_in, format):
     return list_in
 
 
-def build_total_file(total_list, directory='./', options=None):
+def build_total_file(user_lists, directory='./', options=None):
     if options.minute_format:
         time_format = 60
     elif options.hour_format:
         time_format = 60 * 60
     else:
         time_format = 1
+    total_list = {} 
+    for user in user_lists:
+        f = open(directory + user + '.parserout', 'r')
+        for line in f:
+            date, time, count = line.split(',')
+            time = time.lstrip()
+            count = int(count.lstrip().rstrip())
+            date_time_key = date + time
+            if time_format == 60:
+                date_and_time = datetime.strptime(date_time_key, "%Y%m%d%H:%M")
+            elif time_format == 3600:
+                date_and_time = datetime.strptime(date_time_key, "%Y%m%d%H")
+            else:
+                date_and_time = datetime.strptime(date_time_key, "%Y%m%d%H:%M:%S")
 
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+            if date_and_time not in total_list:
+                total_list[date_and_time] = count
+            else:
+                total_list[date_and_time] += count
+        f.close()
+
     if options.zeroes:
         total_list = add_zeroes(total_list, time_format)
 
     total_list = formatted(total_list, time_format)
 
-    if options.total:
-        build_total_aggregate_list(total_list)
-
-    f = open(str(directory) + '/parsertotal.out', 'w+')
-    for item in sorted(total_list):
-        f.write(str(item) + ", " + str(total_list[item]) + "\n")
+    f = open(directory + 'all_users.parserout', 'w+')
+    for key in sorted(total_list):
+        f.write(str(key) + ', ' + str(total_list[key]) + '\n')
     f.close()
 
 
-def build_total_aggregate_file(directory='./'):
+def build_total_aggregate_file(directory='.'):
     if not os.path.exists(directory):
         os.makedirs(directory)
-
-    f = open(str(directory) + '/log_aggregate_total.out', 'w+')
-    for item in sorted(total_aggregate_list):
-        f.write(str(item) + ", " + str(total_aggregate_list[item]) + "\n")
+    aggregate_list = {}
+    for f in glob.glob(directory + '/*_parser_output/all_users.parserout'):
+        parse_output_file(f, aggregate_list)
+    f = open(directory + '/aggregate_all_logs.parserout', 'w+')
+    for item in sorted(aggregate_list):
+       date, time = item.split(' ')
+       f.write(str(date) + ", " + time + ", " +str(aggregate_list[item]))
     f.close()
 
 
-def build_user_list(user, time_key, user_lists):
+####################################################################################
+# Build up a list of users found in the file and write connection instance to file #
+####################################################################################
+def build_user_list(user, time_key, user_lists, output_dir='./'):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    # write found times to a temp file to be parsed later
+    f = open(output_dir + user + '.parserout.tmp', 'a+')
+    f.write(str(time_key) + '\n')
+    f.close()
+
+    # add user to a dictionary instead of array for constant retrieval
     if user not in user_lists:
-        user_lists[user] = {}
-    if time_key not in user_lists[user]:
-        user_lists[user][time_key] = 1
-    else:
-        user_lists[user][time_key] += 1
+        user_lists[user] = 0
 
 
-def build_total_list(time_key, total_list):
-    if time_key not in total_list:
-        total_list[time_key] = 1
-    else:
-        total_list[time_key] += 1
-
-
-def build_total_aggregate_list(list_in):
-    global total_aggregate_list
-    if total_aggregate_list is None:
-        total_aggregate_list = list_in.copy
-    else:
-        total_aggregate_list.update(list_in)
-
-
+#####################################################
+# Add zeroes at times where no connections occurred #
+#####################################################
 def add_zeroes(time_list, time_format=1):
+    # Need to sort keys to accurately get first and last connection times
     sorted_keys = sorted(time_list.keys())
     first_element = sorted_keys[0]
     last_element = sorted_keys[-1]
     zero_list = {}
-
+    
+    # iterate through found times from first to last, maintain separate list of times with no connections
     while first_element < last_element:
         if first_element not in time_list:
             zero_list[first_element] = 0
+        # increment time value up depending on format specified by user. Defaults to 1 second
         first_element = first_element + timedelta(0, time_format)
     total = time_list.copy()
     total.update(zero_list)
     return total
+
+
+####################################
+# Remove all previous output files #
+####################################
+def remove_previous_output(directory):
+    print directory
+    for output_file in glob.glob(directory + '/**/*.parserout'):
+        os.remove(output_file)
 
 
 def main():
@@ -195,6 +247,8 @@ def main():
         output_folder = './'
     else:    
         output_folder = options.output+'/'
+
+    remove_previous_output(output_folder)
 
     if os.path.isdir(file_or_dir):
         for file_name in glob.glob(file_or_dir+'/*.log'):
