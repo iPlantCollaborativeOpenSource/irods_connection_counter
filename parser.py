@@ -45,20 +45,23 @@ def format_date(unix_timestamp):
 
 def parse_file(file_name, output_folder, options):
     user_connections = {}
+    total_connections_for_file = {}
     user_lists = {}
     process_ids = {}
-    old_connections = {}
-    leftover_opened_count = 0
-    #print options
     resolution = 1
+    date_format = "%Y %b %d %H:%M:%S"
     if options.minute_format:
         resolution = 60
+        date_format = "%Y %b %d %H:%M"
     elif options.hour_format:
         resolution = 60 * 60
+        date_format = "%Y %b %d %H"
     ignored_users = options.ignore or []
 
     with open(file_name, 'r') as f:
+        previously_opened_count = 0
         for line in f:
+            # Check if line contains an open connection
             if re.search('started', line):
                 try:
                     pid = re.search('process ([0-9]+)', line).group(1)
@@ -68,17 +71,30 @@ def parse_file(file_name, output_folder, options):
                     continue
 
                 if user in ignored_users:
-                        continue
+                    process_ids[pid] = user
+                    continue
 
+                # Ignore seconds
                 if resolution == 60:
                     date_time = date_time[:-3]
+                # Ignore minutes and seconds
                 elif resolution == 3600:
                     date_time = date_time[:-6]
 
-                if pid not in process_ids or process_ids[pid]['closed']:
-                    leftover_opened_count += 1
-                    process_ids[pid] = {'user': user, 'opened': date_time, 'closed': None}
+                opened_time = "2015 " + date_time
+                date_object = datetime.strptime(opened_time, date_format)
+                time_stamp = int(time.mktime(date_object.timetuple()))
+                if user not in user_connections:
+                    user_connections[user] = {}
+                if time_stamp not in user_connections[user]:
+                    user_connections[user][time_stamp] = 0
+                user_connections[user][time_stamp] += 1
+                if time_stamp not in total_connections_for_file:
+                    total_connections_for_file[time_stamp] = 0
+                total_connections_for_file[time_stamp] += 1
+                process_ids[pid] = user
 
+            # Check if line contains a closed connection
             elif re.search('exited', line):
                 try:
                     pid = re.search('process ([0-9]+)', line).group(1)
@@ -86,116 +102,62 @@ def parse_file(file_name, output_folder, options):
                 except Exception as e:
                     continue
 
+                # Ignore seconds
                 if resolution == 60:
                     date_time = date_time[:-3]
+
+                # Ignore minutes and seconds
                 elif resolution == 3600:
                     date_time = date_time[:-6]
 
-                if pid not in process_ids:
-                    if date_time not in old_connections:
-                        old_connections[date_time] = 1
-                    else:
-                        old_connections[date_time] += 1
+                closed_time = "2015 " + date_time
+                date_object = datetime.strptime(closed_time, date_format)
+                time_stamp = int(time.mktime(date_object.timetuple()))
+
+                if pid in process_ids:
+                    user = process_ids[pid]
+                    if user in ignored_users:
+                        del process_ids[pid]
+                        continue
+                    if user not in user_connections:
+                        user_connections[user] = {}
+                    if time_stamp not in user_connections[user]:
+                        user_connections[user][time_stamp] = 0
+                    user_connections[user][time_stamp] -= 1
+                    if time_stamp not in total_connections_for_file:
+                        total_connections_for_file[time_stamp] = 0
+                    total_connections_for_file[time_stamp] -= 1
+                    del process_ids[pid]
                 else:
-                    leftover_opened_count -= 1
-                    process_ids[pid]['closed'] = date_time
+                    if time_stamp not in total_connections_for_file:
+                        total_connections_for_file[time_stamp] = 0
+                    total_connections_for_file[time_stamp] -= 1
+                    previously_opened_count += 1
             else:
                 continue
     f.close()
 
-    formatted_old_connections = {}
-    old_connection_count = 0
+    for username in user_connections:
+        count = 0
+        user_lists[username] = {}
+        for time_stamp in sorted(user_connections[username]):
+            count += user_connections[username][time_stamp]
+            user_lists[username][time_stamp] = count
 
-    print resolution
-
-    date_format = "%Y %b %d %H:%M:%S"
-    if resolution == 60:
-        date_format = "%Y %b %d %H:%M"
-    elif resolution == 3600:
-        date_format = "%Y %b %d %H"
-
-    for key in old_connections:
-            opened_time = "2015 " + str(key)
-            date_object = datetime.strptime(opened_time, date_format)
-
-            time_stamp = int(time.mktime(date_object.timetuple()))
-            formatted_old_connections[time_stamp] = old_connections[key]
-            old_connection_count += old_connections[key]
-
-    for pid in process_ids:
-        username = process_ids[pid]['user']
-        opened_time = None
-        closed_time = None
-
-        if process_ids[pid]['opened']:
-            opened_time = "2015 " + process_ids[pid]['opened']
-            date_object = datetime.strptime(opened_time, date_format)
-            opened_time = int(time.mktime(date_object.timetuple()))
-
-        if process_ids[pid]['closed']:
-            closed_time = "2015 " + process_ids[pid]['closed']
-            date_object = datetime.strptime(closed_time, date_format)
-            closed_time = int(time.mktime(date_object.timetuple()))
-
-        if username not in user_lists:
-            user_lists[username] = {'opened': {}, 'closed': {}}
-
-        if opened_time:
-            if opened_time not in user_lists[username]['opened']:
-                user_lists[username]['opened'][opened_time] = 1
-            else:
-                user_lists[username]['opened'][opened_time] += 1
-
-        if closed_time:
-            if closed_time not in user_lists[username]['closed']:
-                user_lists[username]['closed'][closed_time] = 1
-            else:
-                user_lists[username]['closed'][closed_time] += 1
-
+    total_count = previously_opened_count
+    if not os.path.isdir(output_folder):
+        os.mkdir(output_folder)
+    with open(output_folder + 'total.out', 'w+') as f:
+        for time_stamp in sorted(total_connections_for_file):
+            total_count += total_connections_for_file[time_stamp]
+            f.write(format_date(time_stamp) + ", " + str(total_count) + '\n')
+    if not os.path.isdir(output_folder):
+        os.mkdir(output_folder)
     for username in user_lists:
-        user_connections[username] = {}
-        sorted_open_connections = sorted(user_lists[username]['opened'])
-        sorted_closed_connections = sorted(user_lists[username]['closed'])
-        first = sorted_open_connections[0]
-        last = sorted_open_connections[len(sorted_open_connections) - 1]
-        try:
-            first_closed = sorted_closed_connections[0]
-            last_closed = sorted_closed_connections[len(sorted_closed_connections) - 1]
-        except Exception as e:
-            first_closed = first
-            last_closed = last
-        if first_closed < first:
-            first = first_closed
-        if last_closed > last:
-            last = last_closed
+        with open(output_folder + username + '.out', 'w+') as f:
+            for time_stamp in sorted(user_lists[username]):
+                f.write(format_date(time_stamp) + ", " + str(user_lists[username][time_stamp]) + '\n')
 
-        open_connections = 0
-        while first < last:
-            if first in user_lists[username]['opened']:
-                open_connections += user_lists[username]['opened'][first]
-            if first in user_lists[username]['closed']:
-                open_connections -= user_lists[username]['closed'][first]
-            user_connections[username][first] = open_connections
-            first += resolution
-
-    total_list = {}
-    for key in user_connections:
-        print key
-        with open('hello/test_out_' + key, 'w+') as f:
-            for connection_time in user_connections[key]:
-                if connection_time not in total_list:
-                    total_list[connection_time] = user_connections[key][connection_time]
-                else:
-                    total_list[connection_time] += user_connections[key][connection_time]
-                #print connection_time
-                time_to_write = format_date(connection_time)
-                f.write(time_to_write + ", " + str(user_connections[key][connection_time]) + "\n")
-        f.close()
-    with open('all_total', 'w+') as f:
-        for key in sorted(total_list):
-            time_to_write = format_date(key)
-            f.write(time_to_write + ", " + str(total_list[key]) + '\n')
-    f.close()
 
 def main():
     parser = argparse.ArgumentParser(description="Count iRODS user connections")
