@@ -41,6 +41,9 @@ def parse_file(file_name, output_folder, options):
 
     ignored_users = options.ignore or []
 
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
     with open(file_name, 'r') as f:
         leftovers = 0
         greatest_time = 0
@@ -134,6 +137,8 @@ def parse_file(file_name, output_folder, options):
 
     del user_connections
 
+    #TODO: merge these two loops into one
+
     # Pad out times where connections were sustained
     for username in user_lists:
         last = greatest_time
@@ -144,6 +149,7 @@ def parse_file(file_name, output_folder, options):
 
     for username in user_lists:
         old_connections_copy = copy.copy(old_connections)
+        #if not os.path.exists(output_folder)
         with open(output_folder + username + '.out', 'w+') as f:
             for time_stamp in sorted(user_lists[username]):
 
@@ -157,11 +163,12 @@ def parse_file(file_name, output_folder, options):
 
                 del(user_lists[username][time_stamp])
 
-    #print "total"
-    #for timestamp in sorted(total_connections_for_file):
-    #   print timestamp
-    #   print total_connections_for_file[timestamp]
-    #print "leftovers: " + str(leftovers)
+    with open(output_folder + 'total.out', 'w+') as f:
+        for timestamp in sorted(total_connections_for_file):
+            f.write(format_date(timestamp) + " " + str(total_connections_for_file[timestamp]) + "\n")
+            del total_connections_for_file[timestamp]
+        #   print total_connections_for_file[timestamp]
+        #print "leftovers: " + str(leftovers)
 
 
 def main():
