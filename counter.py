@@ -44,9 +44,17 @@ def remove_previous_output(directory):
 #         f.close()
 
 
-def format_date(unix_timestamp):
+def format_date(unix_timestamp, resolution):
+    if resolution == 60:
+        date_format = "%Y%m%d, %H:%M"
+    elif resolution == 3600:
+        date_format = "%Y%m%d, %H"
+    else:
+        date_format = "%Y%m%d, %H:%M:%S"
+
     date_object = time.localtime(unix_timestamp)
-    return time.strftime("%Y%m%d, %H:%M:%S", date_object)
+
+    return time.strftime(date_format, date_object)
 
 
 def parse_file(file_name, output_folder, options):
@@ -171,14 +179,14 @@ def parse_file(file_name, output_folder, options):
                 if timestamp not in total_connections_for_file:
                     total_connections_for_file[timestamp] = len(old_connections_copy)
                 total_connections_for_file[timestamp] += user_connections[username][timestamp]
-                f.write(format_date(timestamp) + ", " + str(user_connections[username][timestamp]) + "\n")
+                f.write(format_date(timestamp, resolution) + ", " + str(user_connections[username][timestamp]) + "\n")
             del user_connections[username]
             gc.collect()
 
     # write all connections to file
     with open(output_folder + 'all_users.out', 'w+') as f:
         for timestamp in sorted(total_connections_for_file):
-            f.write(format_date(timestamp) + ", " + str(total_connections_for_file[timestamp]) + "\n")
+            f.write(format_date(timestamp, resolution) + ", " + str(total_connections_for_file[timestamp]) + "\n")
     total_connections_for_file.clear()
     gc.collect()
     f.close()
