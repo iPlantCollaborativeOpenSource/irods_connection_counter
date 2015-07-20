@@ -3,13 +3,11 @@
 import re
 import os
 import glob
-from datetime import datetime, date, timedelta
+from datetime import datetime
 import argparse
 import copy
 import gc
 import time
-import sys
-from multiprocessing import Pool, Process
 
 
 ####################################
@@ -20,9 +18,11 @@ def remove_previous_output(directory):
         os.remove(output_file)
 
 
+# TODO: come up with an efficient and accurate way to combine all logs
 # def build_total_aggregate_file(output_folder):
 #     total_aggregate = {}
 #     total_count = 0
+#     greatest = 0
 #     for filename in glob.glob(output_folder + '/**/*/all_users.out'):
 #         with open(filename, 'r') as f:
 #             for line in f:
@@ -31,15 +31,17 @@ def remove_previous_output(directory):
 #                 count = int(count.strip())
 #                 date_object = datetime.strptime(str(date)+str(timestamp), "%Y%m%d%H:%M:%S")
 #                 time_stamp = int(time.mktime(date_object.timetuple()))
-#                 total_count += count
-#                 #if time_stamp not in total_aggregate:
-#                 #    total_aggregate[time_stamp] = total_count
-#                 total_aggregate[time_stamp] = count
+#                 #total_count += count
+#                 if time_stamp > greatest
+#                 if time_stamp not in total_aggregate:
+#                     total_aggregate[time_stamp] = 0
+#                 total_aggregate[time_stamp] += count
 #         f.close()
+#
 #     with open(output_folder+'all_logs.out', 'w+') as f:
 #         for timestamp in sorted(total_aggregate):
 #             f.write(str(timestamp) + ", " + str(total_aggregate[timestamp]) + "\n")
-#     f.close()
+#         f.close()
 
 
 def format_date(unix_timestamp):
@@ -54,6 +56,7 @@ def parse_file(file_name, output_folder, options):
     user_counts = {}
     process_ids = {}
     resolution = 1
+    year = options.year or "2015"
 
     date_format = "%Y %b %d %H:%M:%S"
     if options.minute_format:
@@ -94,7 +97,7 @@ def parse_file(file_name, output_folder, options):
 
                 leftovers += 1
 
-                opened_time = "2015 " + date_time
+                opened_time = year + " " + date_time
                 date_object = datetime.strptime(opened_time, date_format)
                 time_stamp = int(time.mktime(date_object.timetuple()))
 
@@ -127,7 +130,7 @@ def parse_file(file_name, output_folder, options):
                 elif resolution == 3600:
                     date_time = date_time[:-6]
 
-                closed_time = "2015 " + date_time
+                closed_time = year + " " + date_time
                 date_object = datetime.strptime(closed_time, date_format)
                 time_stamp = int(time.mktime(date_object.timetuple()))
 
@@ -153,6 +156,7 @@ def parse_file(file_name, output_folder, options):
     gc.collect()
 
     user_names = copy.copy(user_connections.keys())
+
     # Pad out times where connections were sustained
     for username in user_names:
         old_connections_copy = copy.copy(old_connections)
@@ -175,6 +179,8 @@ def parse_file(file_name, output_folder, options):
     with open(output_folder + 'all_users.out', 'w+') as f:
         for timestamp in sorted(total_connections_for_file):
             f.write(format_date(timestamp) + ", " + str(total_connections_for_file[timestamp]) + "\n")
+    total_connections_for_file.clear()
+    gc.collect()
     f.close()
 
 
@@ -186,7 +192,6 @@ def main():
     parser.add_argument('-y', '--year', dest='year', help="Year of log (defaults to current year")
     parser.add_argument('-i', '--ignore', dest='ignore', help="Users to ignore")
     parser.add_argument('-o', '--output', dest="output", help="Directory for output files (defaults to CWD)")
-    parser.add_argument('-z', '--zeroes', action='store_const', dest='zeroes', const='zeroes', help="Output zeroes for time with no connections")
     parser.add_argument('-t', '--total', action='store_const', dest='total', const='total', help="Generate a total aggregate of all log files")
 
     options = parser.parse_args()
