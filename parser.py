@@ -6,6 +6,7 @@ import glob
 from datetime import datetime, date, timedelta
 import argparse
 import copy
+import gc
 import time
 from multiprocessing import Pool, Process
 
@@ -27,7 +28,7 @@ def parse_file(file_name, output_folder, options):
     user_connections = {}
     total_connections_for_file = {}
     old_connections = []
-    user_lists = {}
+    user_counts = {}
     process_ids = {}
     resolution = 1
 
@@ -77,11 +78,18 @@ def parse_file(file_name, output_folder, options):
                 if time_stamp > greatest_time:
                     greatest_time = time_stamp
 
+                if user not in user_counts:
+                    user_counts[user] = 0
+                user_counts[user] += 1
+
                 if user not in user_connections:
                     user_connections[user] = {}
-                if time_stamp not in user_connections[user]:
-                    user_connections[user][time_stamp] = 0
-                user_connections[user][time_stamp] += 1
+
+                #if time_stamp not in user_connections[user]:
+                #    user_connections[user][time_stamp] = 0
+                #user_connections[user][time_stamp] += 1
+
+                user_connections[user][time_stamp] = user_counts[user]
                 process_ids[pid] = user
 
             # Check if line contains a closed connection
@@ -112,11 +120,13 @@ def parse_file(file_name, output_folder, options):
                     if user in ignored_users:
                         del process_ids[pid]
                         continue
-                    if user not in user_connections:
-                        user_connections[user] = {}
-                    if time_stamp not in user_connections[user]:
-                        user_connections[user][time_stamp] = 0
-                    user_connections[user][time_stamp] -= 1
+                    #if user not in user_connections:
+                    #    user_connections[user] = {}
+                    #if time_stamp not in user_connections[user]:
+                    #    user_connections[user][time_stamp] = 0
+                    #user_connections[user][time_stamp] -= 1
+                    user_counts[user] -= 1
+                    user_connections[user][time_stamp] = user_counts[user]
                     leftovers -= 1
                     del process_ids[pid]
                 else:
@@ -125,50 +135,83 @@ def parse_file(file_name, output_folder, options):
                 continue
     f.close()
 
-    del process_ids
-
-    # Generate counts for each user
-    for username in user_connections:
-        count = 0
-        user_lists[username] = {}
-        for time_stamp in sorted(user_connections[username]):
-            count += user_connections[username][time_stamp]
-            user_lists[username][time_stamp] = count
-
-    del user_connections
-
-    #TODO: merge these two loops into one
+    # print "HEY I'M DONE"
+    # time.sleep(10)
+    process_ids.clear()
+    gc.collect()
+    # print process_ids
+    # print "JUST DID THE THING"
+    # time.sleep(10)
+    # print "OKAY I'M GOING BACK TO IT"
 
     # Pad out times where connections were sustained
-    for username in user_lists:
+    for username in user_connections:
         last = greatest_time
-        for thing in sorted(user_lists[username]):
-            while thing+1 not in user_lists[username] and thing + 1 <= last:
-                user_lists[username][thing+1] = user_lists[username][thing]
-                thing += 1
+        for timestamp in sorted(user_connections[username]):
+            while timestamp + resolution not in user_connections[username] and timestamp + resolution <= last:
+                user_connections[username][timestamp+resolution] = user_connections[username][timestamp]
+                timestamp += resolution
 
-    for username in user_lists:
+    # write user files and add times to total connections for file
+    for user in user_connections:
         old_connections_copy = copy.copy(old_connections)
-        #if not os.path.exists(output_folder)
-        with open(output_folder + username + '.out', 'w+') as f:
-            for time_stamp in sorted(user_lists[username]):
+        with open(output_folder + user + '.out', 'w+') as f:
+            for timestamp in sorted(user_connections[user]):
+                if len(old_connections_copy) > 0 and old_connections_copy[0] <= timestamp:
+                    old_connections_copy.pop()
+                if timestamp not in total_connections_for_file:
+                    total_connections_for_file[timestamp] = len(old_connections_copy)
+                total_connections_for_file[timestamp] += user_connections[user][timestamp]
+                f.write(format_date(timestamp) + ", " + str(user_connections[user][timestamp]) + "\n")
+        f.close()
 
-                if len(old_connections_copy) > 0 and time_stamp >= old_connections_copy[0]:
-                    old_connections_copy.pop(0)
-                if time_stamp not in total_connections_for_file:
-                    total_connections_for_file[time_stamp] = len(old_connections_copy)
-
-                total_connections_for_file[time_stamp] += user_lists[username][time_stamp]
-                f.write(format_date(time_stamp) + ", " + str(user_lists[username][time_stamp]) + '\n')
-
-                del(user_lists[username][time_stamp])
-
-    with open(output_folder + 'total.out', 'w+') as f:
+    # write all connections file
+    with open(output_folder + 'all_users.out', 'w+') as f:
         for timestamp in sorted(total_connections_for_file):
-            f.write(format_date(timestamp) + " " + str(total_connections_for_file[timestamp]) + "\n")
-            del total_connections_for_file[timestamp]
-        #   print total_connections_for_file[timestamp]
-        #print "leftovers: " + str(leftovers)
+            f.write(format_date(timestamp) + ", " + str(total_connections_for_file[timestamp]) + "\n")
+    f.close()
+    # Generate counts for each user
+    # for username in user_connections:
+    #     count = 0
+    #     user_lists[username] = {}
+    #     for time_stamp in sorted(user_connections[username]):
+    #         count += user_connections[username][time_stamp]
+    #         user_lists[username][time_stamp] = count
+    #
+    # del user_connections
+    #
+    # #TODO: merge these two loops into one
+    #
+    # # Pad out times where connections were sustained
+    # for username in user_lists:
+    #     last = greatest_time
+    #     for thing in sorted(user_lists[username]):
+    #         while thing+1 not in user_lists[username] and thing + 1 <= last:
+    #             user_lists[username][thing+1] = user_lists[username][thing]
+    #             thing += 1
+    #
+    # for username in user_lists:
+    #     old_connections_copy = copy.copy(old_connections)
+    #     #if not os.path.exists(output_folder)
+    #     with open(output_folder + username + '.out', 'w+') as f:
+    #         for time_stamp in sorted(user_lists[username]):
+    #
+    #             if len(old_connections_copy) > 0 and time_stamp >= old_connections_copy[0]:
+    #                 old_connections_copy.pop(0)
+    #             if time_stamp not in total_connections_for_file:
+    #                 total_connections_for_file[time_stamp] = len(old_connections_copy)
+    #
+    #             total_connections_for_file[time_stamp] += user_lists[username][time_stamp]
+    #             f.write(format_date(time_stamp) + ", " + str(user_lists[username][time_stamp]) + '\n')
+    #
+    #             del(user_lists[username][time_stamp])
+    #
+    # with open(output_folder + 'total.out', 'w+') as f:
+    #     for timestamp in sorted(total_connections_for_file):
+    #         f.write(format_date(timestamp) + " " + str(total_connections_for_file[timestamp]) + "\n")
+    #         del total_connections_for_file[timestamp]
+    #     #   print total_connections_for_file[timestamp]
+    #     #print "leftovers: " + str(leftovers)
 
 
 def main():
