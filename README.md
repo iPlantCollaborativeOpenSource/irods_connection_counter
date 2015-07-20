@@ -5,7 +5,7 @@ This project counts individual user connections from irods and outputs individua
 parser.py <.log file or directory containing .log files>
 
 #Options
--l for connections by hour
+--hours for connections by hour
 
 -m for connections by minute
 
