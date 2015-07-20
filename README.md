@@ -15,8 +15,6 @@ By default, the log will output connections by second
 
 -y <year> for the year the log was generated. Defaults to current year
 
--z to add zeroes to times where no connections were opened
-
 -t to generate a total aggregate file of all logs parsed
 
 #Example
