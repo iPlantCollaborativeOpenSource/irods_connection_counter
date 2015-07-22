@@ -25,20 +25,28 @@ def build_total_aggregate_file(output_folder):
     for filename in glob.glob(output_folder + '/**/*/all_users.out'):
         with open(filename, 'r') as f:
             for line in f:
-                date, timestamp, count = line.split(',')
-                timestamp = timestamp.lstrip()
+                date, time_stamp, count = line.split(',')
+                time_stamp = time_stamp.lstrip()
                 count = int(count.strip())
+
+                date_object = datetime.strptime(str(date)+str(time_stamp), "%Y%m%d%H:%M:%S")
+                time_stamp = int(time.mktime(date_object.timetuple()))
 
                 # if first line in the log
                 if first_line == 0:
+                    if len(total_aggregate.keys()) > 0:
+                        index = sorted(total_aggregate.keys())[-1]
+                        # pad the gap between both log files
+                        while index + 1 < time_stamp:
+                            print index
+                            print time_stamp
+                            total_aggregate[index + 1] = total_aggregate[index]
+                            index += 1
                     # if the log accounts for previously closed connections
                     if count != 1:
                         # then we want that log file's count to be used instead of the last log's last count
                         last_count_from_previous_log = 0
                     first_line = 1
-
-                date_object = datetime.strptime(str(date)+str(timestamp), "%Y%m%d%H:%M:%S")
-                time_stamp = int(time.mktime(date_object.timetuple()))
 
                 if time_stamp not in total_aggregate:
                     total_aggregate[time_stamp] = last_count_from_previous_log
@@ -48,8 +56,8 @@ def build_total_aggregate_file(output_folder):
         first_line = 0
 
     with open(output_folder+'all_logs.out', 'w+') as f:
-        for timestamp in sorted(total_aggregate):
-            f.write(format_date(timestamp, 1) + ", " + str(total_aggregate[timestamp]) + "\n")
+        for time_stamp in sorted(total_aggregate):
+            f.write(format_date(time_stamp, 1) + ", " + str(total_aggregate[time_stamp]) + "\n")
     f.close()
 
 
@@ -188,7 +196,7 @@ def pad_user_times(output_folder, username, total_connections_for_log, user_conn
                 user_connections[username][timestamp+resolution] = user_connections[username][timestamp]
                 timestamp += resolution
         for timestamp in sorted(user_connections[username]):
-            if len(old_connections) > 0 and old_connections[0] <= timestamp:
+            while len(old_connections) > 0 and old_connections[0] <= timestamp:
                 old_connections.pop()
             if timestamp not in total_connections_for_log:
                 total_connections_for_log[timestamp] = len(old_connections)
