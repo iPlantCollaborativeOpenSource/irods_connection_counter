@@ -38,8 +38,6 @@ def build_total_aggregate_file(output_folder):
                         index = sorted(total_aggregate.keys())[-1]
                         # pad the gap between both log files
                         while index + 1 < time_stamp:
-                            print index
-                            print time_stamp
                             total_aggregate[index + 1] = total_aggregate[index]
                             index += 1
                     # if the log accounts for previously closed connections
